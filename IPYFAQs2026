@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base de FAQs - I Pretty You</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        forest: '#1B3D2B',
+                        matcha: '#82A67D',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            min-height: 100vh;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://iprettyyou.app/storage/event_covers/69d930ad6d7a9.webp');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .glass {
+            background: rgba(30, 38, 29, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(74, 103, 65, 0.3);
+            transition: all 0.5s ease;
+        }
+    </style>
+</head>
+<body class="transition-colors duration-500 text-white">
+
+    <div id="loadingScreen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#121810] transition-opacity duration-1000">
+        <img src="https://iprettyyou.app/assets/images/logo-solo.webp" alt="Logo" class="w-32 h-32 mb-6 animate-pulse">
+        <h1 class="text-3xl font-bold text-[#E8F5E9] mb-4">Bienvenido</h1>
+        <div class="w-12 h-12 border-4 border-matcha border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <header class="p-6 flex justify-between items-center backdrop-blur-sm sticky top-0 z-10 transition-colors duration-500">
+        <div class="flex items-center gap-4">
+            <img src="https://iprettyyou.app/assets/images/logo-solo.webp" alt="Logo" class="w-12 h-12 object-contain">
+            <div>
+                <h1 class="text-4xl font-bold text-[#E8F5E9] transition-colors duration-500">Base de FAQS</h1>
+                <p class="text-sm text-[#A8C6A5]">I Pretty You</p>
+                <p id="syncStatus" class="text-[10px] text-matcha font-bold uppercase tracking-widest mt-1">Sincronizando...</p>
+            </div>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="toggleModal(true)" class="p-3 glass rounded-full hover:bg-forest transition duration-300">➕</button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6 space-y-6">
+        <div class="glass p-4 rounded-2xl shadow-sm transition-all duration-500">
+            <label class="block text-sm font-semibold text-gray-300">Hablando con:</label>
+            <input type="text" id="interlocutorName" placeholder="Ej. Juan Pérez" class="w-full mt-1 p-2 bg-transparent outline-none border-b-2 border-matcha focus:border-forest text-white transition-colors duration-500" oninput="filterFAQs()">
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+            <select id="audience" class="p-3 rounded-xl glass border outline-none text-white transition-all duration-500" onchange="filterFAQs()">
+                <option value="">Selecciona una audiencia</option>
+                <option value="clientes">Clientes</option>
+                <option value="invitados">Invitados</option>
+                <option value="coordinadores">Coordinadores</option>
+            </select>
+            <select id="category" class="p-3 rounded-xl glass border outline-none text-white transition-all duration-500" onchange="filterFAQs()">
+                <option value="">Selecciona una categoría</option>
+                <option value="atencion">Atención al cliente</option>
+                <option value="demos">Demos</option>
+                <option value="rrss">Redes sociales</option>
+                <option value="envios">Envíos</option>
+                <option value="soporte">Soporte general</option>
+            </select>
+        </div>
+
+        <input type="text" id="searchBar" placeholder="🔍 Buscar pregunta..." class="w-full p-4 rounded-xl glass border outline-none text-white placeholder-gray-400 transition-all duration-500" oninput="filterFAQs()">
+
+        <div id="faqContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <p class="text-center text-gray-400 italic w-full col-span-full py-10">Por favor, selecciona audiencia y categoría para ver las preguntas.</p>
+        </div>
+    </main>
+
+    <div id="uploadModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm transition-all duration-500">
+        <div class="glass p-8 rounded-3xl w-full max-w-md shadow-2xl relative transition-all duration-500">
+            <button onclick="toggleModal(false)" class="absolute top-4 right-4 text-white font-bold transition-colors duration-500">✕</button>
+            <h2 class="text-xl font-bold text-white mb-4 transition-colors duration-500">Importar FAQs</h2>
+            <input type="file" id="excelFile" accept=".xlsx, .xls" class="w-full p-4 border-2 border-dashed border-matcha/50 rounded-xl text-gray-300 transition-colors duration-500" onchange="handleFileUpload(event)">
+            <p class="text-xs text-gray-400 mt-2 transition-colors duration-500">Formato: audience, category, question, answer</p>
+        </div>
+    </div>
+
+    <script>
+        let faqs = [];
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSzkKGdxdHkZs7uChHvVpAFSyBjBtPfXQkanl3jgf0qzlQcaLwsWJIK3vCtMjsBULc0SAPsFx_vuHxc/pub?output=csv';
+
+        window.onload = async function() {
+            await syncWithGoogleSheet();
+            setTimeout(() => {
+                const screen = document.getElementById('loadingScreen');
+                screen.style.opacity = '0';
+                setTimeout(() => screen.style.display = 'none', 1000);
+            }, 4000);
+        };
+
+        async function syncWithGoogleSheet() {
+            const status = document.getElementById('syncStatus');
+            try {
+                const response = await fetch(SHEET_CSV_URL);
+                const data = await response.text();
+                const workbook = XLSX.read(data, { type: 'string' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                
+                faqs = XLSX.utils.sheet_to_json(sheet).map(item => ({
+                    audience: String(item.audience || '').toLowerCase().trim(),
+                    category: String(item.category || '').toLowerCase().trim(),
+                    question: item.question || '',
+                    answer: item.answer || ''
+                }));
+                
+                const date = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+                status.innerText = `Sincronizado: ${date} ✅`;
+                filterFAQs();
+            } catch (error) {
+                console.error("Error al sincronizar:", error);
+                status.innerText = "Error de sincronización ⚠️";
+            }
+        }
+
+        function toggleModal(show) {
+            const modal = document.getElementById('uploadModal');
+            modal.classList.toggle('hidden', !show);
+            modal.classList.toggle('flex', show);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                faqs = XLSX.utils.sheet_to_json(sheet).map(item => ({
+                    audience: String(item.audience || '').toLowerCase().trim(),
+                    category: String(item.category || '').toLowerCase().trim(),
+                    question: item.question || '',
+                    answer: item.answer || ''
+                }));
+                toggleModal(false);
+                document.getElementById('syncStatus').innerText = "Archivo local activo";
+                filterFAQs();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function filterFAQs() {
+            const name = document.getElementById('interlocutorName').value || " ";
+            const audience = document.getElementById('audience').value.toLowerCase();
+            const category = document.getElementById('category').value.toLowerCase();
+            const search = document.getElementById('searchBar').value.toLowerCase();
+            const container = document.getElementById('faqContainer');
+            
+            if (!audience || !category) {
+                container.innerHTML = '<p class="text-center text-gray-400 italic w-full col-span-full py-10">Selecciona una audiencia y una categoría para ver las preguntas.</p>';
+                return;
+            }
+            
+            container.innerHTML = '';
+            const filtered = faqs.filter(f => 
+                f.audience.includes(audience) &&
+                f.category.includes(category) &&
+                (!search || f.question.toLowerCase().includes(search))
+            );
+
+            if(filtered.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400 w-full col-span-full py-10">No se encontraron preguntas con estos filtros.</p>';
+                return;
+            }
+
+            filtered.forEach((f, i) => {
+                const card = document.createElement('div');
+                card.className = 'glass p-5 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 flex flex-col h-full';
+                card.innerHTML = `
+                    <h3 class="font-bold text-md text-white transition-colors duration-500 flex-grow">${f.question}</h3>
+                    <pre class="whitespace-pre-wrap mt-3 text-sm text-gray-300 font-sans italic transition-colors duration-500 flex-grow">Hola ${name.trim()} 👋\n\n${f.answer}</pre>
+                    <button onclick="copyResponse(${i})" class="mt-4 text-xs bg-forest text-white px-4 py-2 rounded-lg hover:bg-matcha transition duration-300 w-full">Copiar respuesta</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        function copyResponse(index) {
+            const allPres = document.querySelectorAll('pre');
+            const text = allPres[index].innerText;
+            navigator.clipboard.writeText(text);
+        }
+    </script>
+</body>
+</html>
